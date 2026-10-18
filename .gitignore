@@ -1,0 +1,10 @@
+cloudflared.exe
+__pycache__/
+*.pyc
+.pytest_cache/
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+data/meesho_orders.db*
+data/tunnel_url.txt
