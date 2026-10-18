@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Meesho Multi-Account Label Sorting & Merging</title>
+  
+  <!-- PWA & Mobile Web App Meta -->
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Meesho Hub">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="64x64" href="/icons/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="app-sidebar">
+      <div class="sidebar-header">
+        <div style="display:flex; align-items:center; gap:12px; flex:1;">
+          <div class="logo-badge"><i class="fa-solid fa-boxes-packing"></i></div>
+          <div class="sidebar-title">
+            <h2>Meesho Label Hub</h2>
+            <span>Multi-Account Ops</span>
+          </div>
+        </div>
+        <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Close menu">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-tab="dashboard">
+          <i class="fa-solid fa-chart-pie icon"></i> Dashboard
+        </a>
+        <a class="nav-item" data-tab="upload">
+          <i class="fa-solid fa-cloud-arrow-up icon"></i> Upload PDFs
+        </a>
+        <a class="nav-item" data-tab="summary">
+          <i class="fa-solid fa-table-cells icon"></i> Order Summary
+        </a>
+        <a class="nav-item" data-tab="mapping">
+          <i class="fa-solid fa-object-group icon"></i> SKU Mapping
+        </a>
+        <a class="nav-item" data-tab="generator">
+          <i class="fa-solid fa-file-pdf icon"></i> Generate Sorted PDF
+        </a>
+        <a class="nav-item" data-tab="orders">
+          <i class="fa-solid fa-list-check icon"></i> Orders Explorer
+        </a>
+        <a class="nav-item" data-tab="history">
+          <i class="fa-solid fa-clock-rotate-left icon"></i> Processing History
+        </a>
+        <a class="nav-item" data-tab="settings">
+          <i class="fa-solid fa-gear icon"></i> Settings
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981;"></span>
+            <span>Local & Live Active</span>
+          </div>
+        </div>
+        <button class="btn btn-outline-primary btn-sm" id="sidebar-mobile-btn" style="width:100%; font-size:11.5px; padding:5px 8px;" onclick="openMobileModal()">
+          <i class="fa-solid fa-mobile-screen"></i> Mobile Live QR Link
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button class="mobile-toggle-btn" id="mobile-sidebar-toggle" aria-label="Open menu">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="top-bar-title">
+            <h1 id="page-title">Dashboard Overview</h1>
+          </div>
+        </div>
+        <div class="top-bar-actions">
+          <button class="btn btn-success btn-sm" id="btn-install-pwa" style="display:none;" onclick="triggerPwaInstall()" title="Install Meesho Hub on Mobile">
+            <i class="fa-solid fa-download"></i> <span>Install App</span>
+          </button>
+          <button class="btn btn-outline-primary btn-sm" id="btn-mobile-live-top" onclick="openMobileModal()" title="Open on Mobile / Live Tunnel">
+            <i class="fa-solid fa-mobile-screen-button"></i> <span class="hide-on-mobile-tiny">Mobile Live</span>
+          </button>
+          <button class="btn btn-secondary btn-sm hide-on-mobile" id="btn-load-sample-top">
+            <i class="fa-solid fa-bolt text-amber"></i> <span>Sample PDFs</span>
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="switchTab('upload')">
+            <i class="fa-solid fa-plus"></i> <span class="hide-on-mobile-tiny">Upload</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <!-- 1. DASHBOARD TAB (Compact At-a-Glance Executive View) -->
+        <section id="tab-dashboard" class="tab-pane active">
+          <!-- Compact Top Metrics Ribbon -->
+          <div class="kpi-ribbon">
+            <div class="kpi-item">
+              <i class="fa-solid fa-file-pdf text-blue"></i>
+              <span class="kpi-lbl">PDFs:</span>
+              <strong id="stat-files" class="kpi-val">0</strong>
+            </div>
+            <div class="kpi-item">
+              <i class="fa-solid fa-file-lines text-indigo"></i>
+              <span class="kpi-lbl">Pages:</span>
+              <strong id="stat-pages" class="kpi-val">0</strong>
+            </div>
+            <div class="kpi-item">
+              <i class="fa-solid fa-cart-shopping text-emerald"></i>
+              <span class="kpi-lbl">Orders:</span>
+              <strong id="stat-orders" class="kpi-val">0</strong>
+            </div>
+            <div class="kpi-item">
+              <i class="fa-solid fa-shirt text-purple"></i>
+              <span class="kpi-lbl">Pieces:</span>
+              <strong id="stat-pieces" class="kpi-val">0</strong>
+            </div>
+            <div class="kpi-item">
+              <i class="fa-solid fa-tags text-amber"></i>
+              <span class="kpi-lbl">Groups:</span>
+              <strong id="stat-groups" class="kpi-val">0</strong>
+            </div>
+            <div class="kpi-actions">
+              <button class="btn btn-primary btn-sm btn-kpi" id="btn-download-all-bills-pdf" onclick="downloadAllMergedBillsPdf()" title="Download Merged Bills PDF (Sorted by Design > Color > Size)">
+                <i class="fa-solid fa-file-pdf"></i> Merged Bills (Color-wise)
+              </button>
+              <button class="btn btn-warning btn-sm btn-kpi" id="btn-download-size-wise-pdf" onclick="downloadAllMergedBillsSizeWisePdf()" title="Download Merged Bills PDF (Sorted by Design > Size > Color)">
+                <i class="fa-solid fa-arrow-down-short-wide"></i> Size-Wise Bills PDF
+              </button>
+              <button class="btn btn-secondary btn-sm btn-kpi" onclick="exportSkuColorBreakdown('xlsx')" title="Export SKU Breakdown to Excel">
+                <i class="fa-solid fa-file-excel text-emerald"></i> Excel
+              </button>
+            </div>
+          </div>
+
+          <!-- Mobile Dashboard View Switcher Tabs (Only visible on mobile / tablet) -->
+          <div class="mobile-dash-nav no-print" id="mobile-dash-nav">
+            <button class="mobile-dash-tab active" data-view="matrix" onclick="setMobileDashboardView('matrix')">
+              <i class="fa-solid fa-shirt"></i> Products Matrix
+            </button>
+            <button class="mobile-dash-tab" data-view="sellers" onclick="setMobileDashboardView('sellers')">
+              <i class="fa-solid fa-store"></i> Sellers
+            </button>
+            <button class="mobile-dash-tab" data-view="sizes" onclick="setMobileDashboardView('sizes')">
+              <i class="fa-solid fa-ruler-combined"></i> Sizes
+            </button>
+            <button class="mobile-dash-tab" data-view="all" onclick="setMobileDashboardView('all')">
+              <i class="fa-solid fa-layer-group"></i> All Views
+            </button>
+          </div>
+
+          <!-- Split Screen: Left (Sellers & Sizes) + Right (All SKUs Matrix) -->
+          <div class="dashboard-split-layout mobile-view-matrix" id="dashboard-split-layout">
+            <!-- Left Side Column: Sellers & Sizes Summary -->
+            <div class="dashboard-side-col">
+              <!-- Sellers Box -->
+              <div class="card compact-card side-box side-box-sellers">
+                <div class="card-header compact-card-header">
+                  <h3><i class="fa-solid fa-store" style="color:#0284c7; margin-right:6px;"></i> Sellers Summary</h3>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-container side-table-scroll">
+                    <table class="data-table dense-table" id="dashboard-sellers-table">
+                      <thead>
+                        <tr>
+                          <th>Seller Account</th>
+                          <th style="text-align:center; width:65px;">Orders</th>
+                          <th style="text-align:center; width:65px;">Pieces</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr><td colspan="3" style="text-align:center; color:#94a3b8;">No data loaded yet</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sizes Box -->
+              <div class="card compact-card side-box side-box-sizes" style="margin-top: 10px;">
+                <div class="card-header compact-card-header">
+                  <h3><i class="fa-solid fa-ruler-combined" style="color:#10b981; margin-right:6px;"></i> Size Breakdown</h3>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-container side-table-scroll">
+                    <table class="data-table dense-table" id="dashboard-sizes-table">
+                      <thead>
+                        <tr>
+                          <th>Size</th>
+                          <th style="text-align:center; width:60px;">Orders</th>
+                          <th style="text-align:center; width:60px;">Pcs</th>
+                          <th style="text-align:center; width:65px;">Share</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr><td colspan="4" style="text-align:center; color:#94a3b8;">No data loaded yet</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Main Column: All SKUs Product & Color Breakdown -->
+            <div class="dashboard-main-col">
+              <div class="card compact-card main-sku-card">
+                <div class="card-header compact-card-header" style="flex-wrap:wrap; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <h3 style="margin:0;"><i class="fa-solid fa-shirt" style="color:#0284c7; margin-right:6px;"></i> Product & Color Matrix</h3>
+                    <span id="sku-color-summary-badge" class="badge badge-info" style="font-size:11px; text-transform:none;">Loading...</span>
+                  </div>
+                  <div class="filter-controls-bar">
+                    <input type="text" id="sku-color-search" class="form-control form-control-sm" placeholder="Search SKU/Color..." style="width:145px;">
+                    <select id="sku-color-category-filter" class="form-control form-control-sm" style="width:140px;" onchange="onCategoryFilterChange()" title="Filter by category">
+                      <option value="">All Categories</option>
+                      <option value="Plazo">👖 Plazo / Bottoms</option>
+                      <option value="Women T-Shirt">👕 Women T-Shirts</option>
+                      <option value="Men T-Shirt">👕 Men T-Shirts</option>
+                      <option value="Black Patti">🏷️ Black Patti</option>
+                      <option value="Other">📦 Other Products</option>
+                    </select>
+                    <select id="sku-color-sort-mode" class="form-control form-control-sm" style="width:165px;" onchange="loadProductColorMatrix()" title="Display order">
+                      <option value="category">Order: Plazo First, T-Shirts Below</option>
+                      <option value="orders_desc">Order: Most Orders First</option>
+                      <option value="name_asc">Order: Product Name (A-Z)</option>
+                    </select>
+                    <select id="sku-color-seller-filter" class="form-control form-control-sm" style="width:115px;">
+                      <option value="">All Sellers</option>
+                    </select>
+                    <select id="sku-color-group-filter" class="form-control form-control-sm" style="width:115px;">
+                      <option value="">All Groups</option>
+                      <option value="__unmapped__">Unmapped Only</option>
+                    </select>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-sm btn-primary" id="btn-view-merged" onclick="setSkuViewMode('merged')" title="Merged Product Group">Merged</button>
+                      <button class="btn btn-sm btn-secondary" id="btn-view-sku" onclick="setSkuViewMode('sku')" title="By Catalog SKU">By SKU</button>
+                      <button class="btn btn-sm btn-secondary" id="btn-view-flat" onclick="setSkuViewMode('flat')" title="Raw SKUs">Raw</button>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" id="btn-toggle-all-products" onclick="toggleAllProductAccordions()" style="padding:4px 8px; font-size:12px;">
+                      <i class="fa-solid fa-layer-group"></i> Expand
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="openPickingChecklistModal()" title="Print A4 Order Picking & Packing Checklist with checkboxes" style="padding:4px 10px; font-size:12px; font-weight:600; background:#0284c7; border-color:#0284c7;">
+                      <i class="fa-solid fa-clipboard-check"></i> 🖨️ A4 Checklist
+                    </button>
+                  </div>
+                </div>
+                <!-- Category Quick Navigation Pills Bar -->
+                <div id="category-pills-bar" style="display:flex; gap:8px; padding:6px 16px; background:#f8fafc; border-bottom:1px solid var(--border-color); align-items:center; flex-wrap:wrap;">
+                  <span style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Categories:</span>
+                  <button class="cat-pill active" onclick="selectCategoryPill('')" data-cat="">All Products (<span id="cat-count-all">0</span>)</button>
+                  <button class="cat-pill" onclick="selectCategoryPill('Plazo')" data-cat="Plazo">👖 Plazo (<span id="cat-count-plazo">0</span>)</button>
+                  <button class="cat-pill" onclick="selectCategoryPill('Women T-Shirt')" data-cat="Women T-Shirt">👕 Women T-Shirts (<span id="cat-count-tshirt">0</span>)</button>
+                  <button class="cat-pill" onclick="selectCategoryPill('Men T-Shirt')" data-cat="Men T-Shirt">👕 Men T-Shirts (<span id="cat-count-mentshirt">0</span>)</button>
+                  <button class="cat-pill" onclick="selectCategoryPill('Black Patti')" data-cat="Black Patti">🏷️ Black Patti (<span id="cat-count-blackpatti">0</span>)</button>
+                  <button class="cat-pill" onclick="selectCategoryPill('Other')" data-cat="Other">📦 Other (<span id="cat-count-other">0</span>)</button>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-container main-sku-table-scroll">
+                    <div class="mobile-table-hint no-print">
+                      <i class="fa-solid fa-arrows-left-right"></i> Swipe left-right for colors & sizes
+                    </div>
+                    <table class="data-table dense-table" id="dashboard-skus-table">
+                      <thead>
+                        <tr id="dashboard-skus-thead-row">
+                          <th style="width:32px; text-align:center;">#</th>
+                          <th>Product Group / Physical Product</th>
+                          <th>Colors Available</th>
+                          <th>Size Breakdown</th>
+                          <th style="text-align:center; width:95px;">Orders</th>
+                          <th style="text-align:center; width:75px;">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="dashboard-skus-tbody">
+                        <tr><td colspan="6" style="text-align:center; color:#94a3b8;">Loading all SKUs...</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. UPLOAD TAB -->
+        <section id="tab-upload" class="tab-pane">
+          <div class="card">
+            <div class="card-header">
+              <h3>Upload Meesho Shipping-Label PDFs</h3>
+              <button class="btn btn-secondary btn-sm" id="btn-load-sample-upload">
+                <i class="fa-solid fa-folder-open"></i> Load Sample Test PDFs
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="dropzone" id="pdf-dropzone">
+                <div class="dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                <div class="dropzone-text">
+                  <h4>Drag & Drop Meesho PDF files here</h4>
+                  <p>Supports multiple PDFs from different seller accounts in a single batch</p>
+                </div>
+                <input type="file" id="file-input" multiple accept=".pdf" style="display:none;">
+                <button class="btn btn-primary" style="margin-top:16px;" onclick="document.getElementById('file-input').click()">
+                  Browse Files
+                </button>
+              </div>
+
+              <div id="upload-progress-container" style="display:none; margin-top:20px;">
+                <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:6px;">
+                  <span id="upload-progress-text">Processing PDFs...</span>
+                  <span id="upload-progress-percent">0%</span>
+                </div>
+                <div style="height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
+                  <div id="upload-progress-bar" style="width:0%; height:100%; background:var(--primary); transition:width 0.2s;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Uploaded PDF Files</h3>
+              <button class="btn btn-secondary btn-sm" onclick="loadUploadedFiles()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table class="data-table" id="files-table">
+                  <thead>
+                    <tr>
+                      <th>Filename</th>
+                      <th style="text-align:center;">Pages</th>
+                      <th style="text-align:center;">Size</th>
+                      <th style="text-align:center;">Status</th>
+                      <th>Uploaded Time</th>
+                      <th style="text-align:center;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td colspan="6" style="text-align:center; color:#94a3b8;">No PDF files uploaded yet</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. ORDER SUMMARY / SIZE MATRIX TAB -->
+        <section id="tab-summary" class="tab-pane">
+          <div class="card">
+            <div class="card-header">
+              <h3>Total Orders & Quantities by SKU and Size</h3>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-secondary btn-sm" onclick="exportSummary('xlsx')">
+                  <i class="fa-solid fa-file-excel text-emerald"></i> Export to Excel
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="exportSummary('csv')">
+                  <i class="fa-solid fa-file-csv text-blue"></i> Export to CSV
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="filter-bar">
+                <div class="filter-input">
+                  <input type="text" id="summary-search" class="form-control" placeholder="Search SKU or Group...">
+                </div>
+                <div>
+                  <select id="summary-seller-filter" class="form-control" style="min-width:180px;">
+                    <option value="">All Sellers</option>
+                  </select>
+                </div>
+                <div>
+                  <select id="summary-group-filter" class="form-control" style="min-width:180px;">
+                    <option value="">All Product Groups</option>
+                    <option value="__unmapped__">Unmapped SKUs Only</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="loadSummaryTable()">
+                  <i class="fa-solid fa-filter"></i> Apply Filters
+                </button>
+              </div>
+
+              <div class="table-container" style="max-height: 600px;">
+                <table class="data-table" id="matrix-table">
+                  <thead>
+                    <!-- Injected dynamically by JS -->
+                  </thead>
+                  <tbody>
+                    <!-- Injected dynamically by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. SKU MAPPING TAB -->
+        <section id="tab-mapping" class="tab-pane">
+          <!-- Suggestion Banner -->
+          <div id="mapping-suggestions-container" style="display:none; margin-bottom:20px;">
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:16px; display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="color:#2563eb; font-size:20px;"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                <div>
+                  <div style="font-weight:600; font-size:14px; color:#1e40af;">Smart Mapping Suggestion Available</div>
+                  <div style="font-size:12.5px; color:#3b82f6;" id="suggestion-text">Potential matches found across seller accounts.</div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-apply-suggestion">Review & Combine</button>
+            </div>
+          </div>
+
+          <!-- Persistence & Auto-Save Status Bar -->
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#16a34a;"></span>
+              <span style="font-weight:600; font-size:13px; color:#166534;">
+                SKU Mappings Auto-Saved & Persistent
+              </span>
+              <span id="mapping-storage-status" style="font-size:12px; color:#15803d; margin-left:4px;">
+                (Saved safely on disk — stays saved even when program is closed & restarted)
+              </span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="exportSkuMappings()" title="Download a JSON backup of all your groups and mappings" style="font-size:12px; padding:4px 10px;">
+                <i class="fa-solid fa-download"></i> Export Backup (.json)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="triggerImportMappings()" title="Restore mappings from a backup JSON file" style="font-size:12px; padding:4px 10px;">
+                <i class="fa-solid fa-upload"></i> Import / Restore
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="manualSyncMappings()" title="Ensure current database mappings are flushed to disk" style="font-size:12px; padding:4px 10px;">
+                <i class="fa-solid fa-floppy-disk"></i> Sync to Disk
+              </button>
+            </div>
+          </div>
+          <input type="file" id="input-import-mappings" accept=".json" style="display:none;" onchange="handleImportMappingsFile(event)">
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div style="font-size:13px; color:var(--text-muted);">
+              Combine different account SKUs for the same physical clothing product (e.g. all Best Mood variants across accounts).
+            </div>
+            <button class="btn btn-success btn-sm" id="btn-auto-group-all" onclick="triggerAutoGroupAll()">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> ⚡ 1-Click Auto-Group All Common Products
+            </button>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <!-- Left: Unmapped SKUs -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3>Unmapped SKUs</h3>
+                  <div style="font-size:12px; color:var(--text-muted);">Select SKUs representing the same product to combine</div>
+                </div>
+                <button class="btn btn-primary btn-sm" id="btn-open-group-modal" disabled>
+                  <i class="fa-solid fa-object-group"></i> Combine Selected
+                </button>
+              </div>
+              <div class="card-body">
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                  <input type="text" id="unmapped-search" class="form-control" placeholder="Search (e.g. best mood, hug me)...">
+                  <select id="unmapped-sort" class="form-control" style="width:170px;" onchange="onUnmappedSortChange()">
+                    <option value="name_asc">Sort: A to Z</option>
+                    <option value="orders_desc">Sort: Orders (High to Low)</option>
+                  </select>
+                </div>
+                <div id="unmapped-search-actions" style="display:none; margin-bottom:12px; background:#f1f5f9; padding:8px 12px; border-radius:6px; justify-content:space-between; align-items:center;">
+                  <span id="unmapped-match-count" style="font-size:12px; font-weight:600; color:#334155;">0 matching SKUs</span>
+                  <button class="btn btn-secondary btn-sm" onclick="selectAllFilteredSkus()"><i class="fa-solid fa-check-double"></i> Select All Matching</button>
+                </div>
+                <div class="table-container" style="max-height: 480px;">
+                  <table class="data-table" id="unmapped-sku-table">
+                    <thead>
+                      <tr>
+                        <th style="width:36px;"><input type="checkbox" id="check-all-unmapped"></th>
+                        <th>Original SKU & Seller ID</th>
+                        <th style="text-align:center;">Orders</th>
+                        <th style="text-align:center;">Pieces</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td colspan="4" style="text-align:center; color:#94a3b8;">No unmapped SKUs</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Active Product Groups -->
+            <div class="card">
+              <div class="card-header" style="flex-wrap:wrap; gap:10px;">
+                <div>
+                  <h3 style="display:flex; align-items:center; gap:8px;">
+                    Active Product Groups
+                    <span id="active-groups-count-badge" class="badge" style="background:#e0e7ff; color:#3730a3; font-size:12px; font-weight:700; padding:2px 8px; border-radius:12px;">0 Groups</span>
+                  </h3>
+                  <div style="font-size:12px; color:var(--text-muted);">Merged clothing items (combines all seller IDs into one)</div>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                  <button class="btn btn-primary btn-sm" onclick="openAddCategoryModal()" title="Add a custom product category" style="font-weight:600;">
+                    <i class="fa-solid fa-plus"></i> Add Category
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btn-toggle-all-groups" onclick="toggleAllGroupsCollapse()" title="Toggle compact single-line view to see all groups at once">
+                    <i class="fa-solid fa-expand"></i> Expand All
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="loadSkuGroups()">
+                    <i class="fa-solid fa-rotate-right"></i> Refresh
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <!-- Search and Filters for Active Groups -->
+                <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+                  <input type="text" id="active-groups-search" class="form-control" placeholder="Search product groups (e.g. Money, Best Mood)..." oninput="renderActiveProductGroups()" style="flex:1; min-width:160px;">
+                  <select id="active-groups-category-filter" class="form-control" style="width:155px;" onchange="renderActiveProductGroups()">
+                    <option value="">All Categories</option>
+                    <option value="Plazo">👖 Plazo</option>
+                    <option value="Women T-Shirt">👕 Women T-Shirt</option>
+                    <option value="Men T-Shirt">👕 Men T-Shirt</option>
+                    <option value="Black Patti">🏷️ Black Patti</option>
+                    <option value="General">📦 General</option>
+                    <option value="Other">📦 Other</option>
+                  </select>
+                  <select id="active-groups-sort" class="form-control" style="width:160px;" onchange="renderActiveProductGroups()">
+                    <option value="orders_desc">Sort: Orders (High)</option>
+                    <option value="name_asc">Sort: Name (A to Z)</option>
+                    <option value="skus_desc">Sort: Most SKUs</option>
+                    <option value="category">Sort: Category</option>
+                  </select>
+                </div>
+
+                <div id="product-groups-container" style="display:flex; flex-direction:column; gap:10px; max-height:680px; overflow-y:auto; padding-right:4px;">
+                  <div style="text-align:center; color:#94a3b8; padding:30px;">Loading product groups...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. SORTED PDF GENERATOR TAB -->
+        <section id="tab-generator" class="tab-pane">
+          <div style="display:flex; gap:16px; margin-bottom:16px;">
+            <button class="btn btn-primary" id="btn-mode-single" onclick="switchGenMode('single')">Single Product Group</button>
+            <button class="btn btn-secondary" id="btn-mode-batch" onclick="switchGenMode('batch')">Batch Mode (Multiple Groups)</button>
+          </div>
+
+          <!-- Single Mode -->
+          <div id="gen-single-mode">
+            <!-- Step 1: Select Group -->
+            <div class="wizard-step-card">
+              <div class="wizard-step-title">
+                <span class="step-num">1</span>
+                <span>Select Physical Product Group (Combines Multiple Accounts)</span>
+              </div>
+              <div style="display:grid; grid-template-columns: 2fr 1fr; gap:16px;">
+                <div>
+                  <select id="gen-group-select" class="form-control" onchange="onGenGroupSelected()">
+                    <option value="">-- Choose Product Group or Unmapped SKU --</option>
+                  </select>
+                </div>
+                <div>
+                  <input type="text" id="gen-output-filename" class="form-control" placeholder="Custom output filename (optional)">
+                </div>
+              </div>
+              <div id="gen-group-details" style="display:none; margin-top:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 14px; font-size:12.5px; color:#1e40af;">
+                <div style="font-weight:600;"><i class="fa-solid fa-layer-group"></i> <span id="gen-details-title">Multi-Account Group Summary</span></div>
+                <div id="gen-details-sellers" style="margin-top:4px; color:#2563eb;"></div>
+              </div>
+            </div>
+
+            <!-- Step 2 & 3: Size Selection -->
+            <div class="wizard-step-card">
+              <div class="wizard-step-title" style="justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span class="step-num">2</span>
+                  <span>Select Sizes to Include</span>
+                </div>
+                <div>
+                  <button class="btn btn-secondary btn-sm" onclick="toggleAllGenSizes(true)">Select All</button>
+                  <button class="btn btn-secondary btn-sm" onclick="toggleAllGenSizes(false)">Deselect All</button>
+                </div>
+              </div>
+              <div id="gen-sizes-container" class="size-pill-grid">
+                <div style="color:#94a3b8; font-size:13px;">Please select a Product Group in Step 1 first</div>
+              </div>
+            </div>
+
+            <!-- Step 4: Sorting Strategy -->
+            <div class="wizard-step-card">
+              <div class="wizard-step-title">
+                <span class="step-num">3</span>
+                <span>Configure Size Sorting & Secondary Order</span>
+              </div>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <div>
+                  <label style="font-size:12.5px; font-weight:600; display:block; margin-bottom:6px;">Size Order Preset</label>
+                  <select id="gen-sort-preset" class="form-control">
+                    <option value="auto">Auto-Detect (Adult or Children sizes)</option>
+                    <option value="adult">Adult Order (XS → S → M → L → XL → XXL → 3XL → Other)</option>
+                    <option value="children">Children Order (0-3M → 3-6M ... 1-2Y → 3-4Y ... 13-14Y)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:12.5px; font-weight:600; display:block; margin-bottom:6px;">Secondary Sort (Within Same Size)</label>
+                  <select id="gen-secondary-sort" class="form-control">
+                    <option value="sku">Original SKU Name</option>
+                    <option value="seller">Seller Account Name</option>
+                    <option value="pickup">Pickup Date</option>
+                    <option value="filename">Source Filename</option>
+                    <option value="page">Original Page Number</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 5: Verification & Action -->
+            <div class="card" style="border-left: 4px solid var(--primary);">
+              <div class="card-header">
+                <h3>Verification & Generation Pre-Check</h3>
+                <button class="btn btn-success" id="btn-generate-pdf" onclick="executePdfGeneration()">
+                  <i class="fa-solid fa-file-pdf"></i> Generate Sorted PDF
+                </button>
+              </div>
+              <div class="card-body">
+                <div id="gen-verification-preview">
+                  <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; text-align:center;">
+                    <div style="background:#f8fafc; padding:12px; border-radius:6px; border:1px solid #e2e8f0;">
+                      <div style="font-size:11.5px; color:#64748b; font-weight:600;">SELECTED GROUP</div>
+                      <div id="prev-group-name" style="font-size:14px; font-weight:700; margin-top:2px;">-</div>
+                    </div>
+                    <div style="background:#f8fafc; padding:12px; border-radius:6px; border:1px solid #e2e8f0;">
+                      <div style="font-size:11.5px; color:#64748b; font-weight:600;">INCLUDED SKUS</div>
+                      <div id="prev-skus-count" style="font-size:14px; font-weight:700; margin-top:2px;">-</div>
+                    </div>
+                    <div style="background:#f8fafc; padding:12px; border-radius:6px; border:1px solid #e2e8f0;">
+                      <div style="font-size:11.5px; color:#64748b; font-weight:600;">EXPECTED PAGES</div>
+                      <div id="prev-expected-pages" style="font-size:14px; font-weight:700; margin-top:2px;">-</div>
+                    </div>
+                    <div style="background:#f8fafc; padding:12px; border-radius:6px; border:1px solid #e2e8f0;">
+                      <div style="font-size:11.5px; color:#64748b; font-weight:600;">VECTOR PRESERVATION</div>
+                      <div style="font-size:14px; font-weight:700; color:var(--success); margin-top:2px;">100% Intact</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Batch Mode -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3>Batch & All-In-One PDF Merging</h3>
+                  <div style="font-size:12px; color:var(--text-muted);">Merge everything into ONE combined sorted PDF directly without ZIP, keeping 100% of pages!</div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn btn-success" id="btn-merge-all-single" onclick="executeMergeAllIntoSinglePdf()">
+                    <i class="fa-solid fa-file-pdf"></i> 📄 Merge All into ONE Single PDF (No ZIP)
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="executeBatchGeneration()">
+                    <i class="fa-solid fa-file-zipper"></i> Download as ZIP
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+                  Select the product groups below to merge. Click <strong>"Merge All into ONE Single PDF (No ZIP)"</strong> to combine all selected groups into one continuous, size-sorted packing PDF with 100% page preservation.
+                </p>
+                <div class="table-container">
+                  <table class="data-table" id="batch-groups-table">
+                    <thead>
+                      <tr>
+                        <th style="width:36px;"><input type="checkbox" id="check-all-batch"></th>
+                        <th>Product Group Name</th>
+                        <th style="text-align:center;">Mapped SKUs</th>
+                        <th style="text-align:center;">Total Orders</th>
+                        <th style="text-align:center;">Pieces</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td colspan="5" style="text-align:center; color:#94a3b8;">No groups available</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. ORDERS EXPLORER & REVIEW TAB -->
+        <section id="tab-orders" class="tab-pane">
+          <div class="card">
+            <div class="card-header">
+              <h3>All Extracted Orders & Review Manager</h3>
+              <div style="font-size:13px; color:var(--text-muted);">
+                Total Orders: <span id="orders-total-count">0</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="filter-bar">
+                <input type="text" id="orders-search" class="form-control filter-input" placeholder="Search Order No, SKU, AWB...">
+                <select id="orders-status-filter" class="form-control" style="min-width:140px;">
+                  <option value="">All Statuses</option>
+                  <option value="Valid">Valid</option>
+                  <option value="Needs Review">Needs Review</option>
+                  <option value="Duplicate">Duplicate</option>
+                </select>
+                <select id="orders-seller-filter" class="form-control" style="min-width:180px;">
+                  <option value="">All Sellers</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="loadOrdersTable(1)"><i class="fa-solid fa-search"></i> Search</button>
+              </div>
+
+              <div class="table-container" style="max-height: 540px;">
+                <table class="data-table" id="orders-explorer-table">
+                  <thead>
+                    <tr>
+                      <th>Order No</th>
+                      <th>SKU</th>
+                      <th>Product Group</th>
+                      <th>Size</th>
+                      <th style="text-align:center;">Qty</th>
+                      <th>Color</th>
+                      <th>Seller</th>
+                      <th>AWB / Tracking</th>
+                      <th>Source File (Page)</th>
+                      <th>Status</th>
+                      <th style="text-align:center;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Dynamic -->
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                <button class="btn btn-secondary btn-sm" id="btn-orders-prev" onclick="changeOrdersPage(-1)" disabled>Previous Page</button>
+                <span style="font-size:13px; color:var(--text-muted);" id="orders-pagination-info">Page 1</span>
+                <button class="btn btn-secondary btn-sm" id="btn-orders-next" onclick="changeOrdersPage(1)">Next Page</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. PROCESSING HISTORY TAB -->
+        <section id="tab-history" class="tab-pane">
+          <div class="card">
+            <div class="card-header">
+              <h3>Generated Sorted PDFs & Archives</h3>
+              <button class="btn btn-secondary btn-sm" onclick="loadHistory()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table class="data-table" id="history-table">
+                  <thead>
+                    <tr>
+                      <th>Output Filename</th>
+                      <th>Product Group</th>
+                      <th style="text-align:center;">Orders</th>
+                      <th style="text-align:center;">Pages</th>
+                      <th style="text-align:center;">Verification</th>
+                      <th>Generated At</th>
+                      <th style="text-align:center;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td colspan="7" style="text-align:center; color:#94a3b8;">No PDFs generated yet</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. SETTINGS TAB -->
+        <section id="tab-settings" class="tab-pane">
+          <div class="card">
+            <div class="card-header">
+              <h3>Workspace & Data Maintenance</h3>
+            </div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:16px;">
+              <!-- Safe Daily Reset -->
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <div>
+                    <h4 style="color:#0f172a; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                      <i class="fa-solid fa-broom" style="color:#f59e0b;"></i> Daily Batch Reset (Clear Orders & Labels Only)
+                    </h4>
+                    <p style="font-size:12.5px; color:var(--text-muted); margin:0;">
+                      Clears uploaded PDF shipping labels, parsed orders, and generated output files to prepare for a new day. <strong style="color:#16a34a;">All your SKU Mappings & Product Groups remain 100% safe and saved.</strong>
+                    </p>
+                  </div>
+                  <button class="btn btn-warning btn-sm" onclick="clearDailyOrders()">
+                    <i class="fa-solid fa-broom"></i> Clear Orders (Keep Mappings Safe)
+                  </button>
+                </div>
+              </div>
+
+              <!-- SKU Mappings Backup & Restore -->
+              <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <div>
+                    <h4 style="color:#166534; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                      <i class="fa-solid fa-shield-halved"></i> SKU Mappings Backup & Protection
+                    </h4>
+                    <p style="font-size:12.5px; color:#15803d; margin:0;" id="settings-storage-summary">
+                      Your SKU mappings are continuously auto-saved to disk. They persist across program restarts and daily order clears.
+                    </p>
+                  </div>
+                  <div style="display:flex; gap:8px;">
+                    <button class="btn btn-secondary btn-sm" onclick="exportSkuMappings()">
+                      <i class="fa-solid fa-download"></i> Export Backup (.json)
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="triggerImportMappings()">
+                      <i class="fa-solid fa-upload"></i> Restore from Backup
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Danger Zone: Full Factory Reset -->
+              <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <div>
+                    <h4 style="color:#991b1b; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                      <i class="fa-solid fa-triangle-exclamation"></i> Full Factory Reset (Danger Zone)
+                    </h4>
+                    <p style="font-size:12.5px; color:#b91c1c; margin:0;">
+                      Wipes everything, including orders AND SKU mappings. (An automated safety backup of your mappings will be saved to disk first).
+                    </p>
+                  </div>
+                  <button class="btn btn-danger btn-sm" onclick="fullFactoryReset()">
+                    <i class="fa-solid fa-trash-can"></i> Full Factory Reset
+                  </button>
+                </div>
+              </div>
+              <hr style="border:none; border-top:1px solid #e2e8f0;">
+              <div>
+                <h4>System Architecture</h4>
+                <ul style="font-size:13px; color:var(--text-muted); margin-left:18px; margin-top:6px; line-height:1.8;">
+                  <li>Backend: FastAPI Python local server</li>
+                  <li>PDF Processing: PyMuPDF deterministic vector page preservation</li>
+                  <li>Database: SQLite local storage (WAL mode)</li>
+                  <li>Data Safety: 100% local processing; zero third-party AI or external cloud leaks</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Create Product Group Modal -->
+  <div class="modal-overlay" id="modal-create-group">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Combine Selected SKUs into Product Group</h3>
+        <button style="border:none; background:none; cursor:pointer; font-size:16px;" onclick="closeModal('modal-create-group')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Product Group Name (Physical Item Name)</label>
+          <input type="text" id="modal-group-name" class="form-control" placeholder="e.g. Hug Me Taddy - Chiku">
+        </div>
+        <div>
+          <label style="font-size:12.5px; font-weight:600; display:block; margin-bottom:6px;">Selected SKUs to Map:</label>
+          <ul id="modal-selected-skus-list" style="font-size:13px; color:#475569; max-height:180px; overflow-y:auto; padding-left:20px;">
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-create-group')">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmCreateGroup()">Combine into One Product</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Product Group SKUs (Add / Remove SKUs) Modal -->
+  <div class="modal-overlay" id="modal-manage-group-skus">
+    <div class="modal-box modal-box-lg" style="max-width: 980px; width: 95%;">
+      <div class="modal-header" style="background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:11px; padding:2px 8px; border-radius:4px;">Group SKUs Editor</span>
+            <h3 id="manage-group-modal-title" style="margin:0; font-size:17px; font-weight:700; color:#0f172a;">BEST MOOD PLAZO</h3>
+          </div>
+          <div id="manage-group-modal-subtitle" style="font-size:12px; color:#64748b; margin-top:4px;">
+            Add outside SKUs into this group or remove SKUs back outside to unmapped. No orders or items are ever lost.
+          </div>
+        </div>
+        <button style="border:none; background:none; cursor:pointer; font-size:22px; line-height:1; color:#94a3b8;" onclick="closeModal('modal-manage-group-skus')" title="Close">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding:16px;">
+        <input type="hidden" id="manage-group-modal-id">
+
+        <!-- Two Column Interactive Layout -->
+        <div class="manage-skus-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+          <!-- Column 1: SKUs INSIDE this group -->
+          <div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px; background:#ffffff; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="font-weight:700; font-size:13px; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-box-open" style="color:#0284c7;"></i>
+                <span>Inside This Group</span>
+                <span class="badge" id="manage-count-inside" style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:600; padding:2px 7px; border-radius:12px;">0 SKUs</span>
+              </div>
+              <button class="btn btn-outline-danger btn-sm" id="btn-remove-selected-skus" onclick="removeSelectedSkusFromModal()" disabled style="font-size:11.5px; padding:3px 9px;">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Remove Selected
+              </button>
+            </div>
+
+            <div style="margin-bottom:8px;">
+              <input type="text" id="manage-search-inside" class="form-control" placeholder="Search inside SKUs..." style="font-size:12px; padding:6px 10px;" oninput="filterInsideSkus()">
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:#f8fafc; border-radius:4px; font-size:11.5px; color:#64748b; margin-bottom:8px; border:1px solid #edf2f7;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; margin:0; user-select:none;">
+                <input type="checkbox" id="manage-check-all-inside" onchange="toggleSelectAllInside(this.checked)">
+                <span style="font-weight:500;">Select All</span>
+              </label>
+              <span id="manage-selected-inside-count" style="font-weight:600; color:#0f172a;">0 selected</span>
+            </div>
+
+            <div id="manage-inside-list" style="flex:1; max-height:360px; min-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:2px;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Column 2: SKUs OUTSIDE this group (Unmapped) -->
+          <div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px; background:#ffffff; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="font-weight:700; font-size:13px; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-layer-group" style="color:#10b981;"></i>
+                <span>Outside (Unmapped)</span>
+                <span class="badge" id="manage-count-outside" style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:600; padding:2px 7px; border-radius:12px;">0 SKUs</span>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-add-selected-skus" onclick="addSelectedSkusFromModal()" disabled style="font-size:11.5px; padding:3px 9px;">
+                <i class="fa-solid fa-plus"></i> Add Selected
+              </button>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+              <input type="text" id="manage-search-outside" class="form-control" placeholder="Search outside SKUs (name, seller)..." style="font-size:12px; padding:6px 10px;" oninput="filterOutsideSkus()">
+              <select id="manage-filter-outside-mode" class="form-control" style="width:140px; font-size:11.5px; padding:4px 8px;" onchange="filterOutsideSkus()">
+                <option value="unmapped">Unmapped Only</option>
+                <option value="all">All Other SKUs</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:#f8fafc; border-radius:4px; font-size:11.5px; color:#64748b; margin-bottom:8px; border:1px solid #edf2f7;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; margin:0; user-select:none;">
+                <input type="checkbox" id="manage-check-all-outside" onchange="toggleSelectAllOutside(this.checked)">
+                <span style="font-weight:500;">Select All Filtered</span>
+              </label>
+              <span id="manage-selected-outside-count" style="font-weight:600; color:#0f172a;">0 selected</span>
+            </div>
+
+            <div id="manage-outside-list" style="flex:1; max-height:360px; min-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:2px;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer" style="background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:12px; color:#475569; display:flex; align-items:center; gap:6px;">
+          <i class="fa-solid fa-circle-check" style="color:#10b981;"></i>
+          <span>Changes update in real-time. All order records & pieces are 100% preserved.</span>
+        </div>
+        <button class="btn btn-secondary" onclick="closeModal('modal-manage-group-skus')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Order Modal -->
+  <div class="modal-overlay" id="modal-edit-order">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Manual Order Editing</h3>
+        <button style="border:none; background:none; cursor:pointer; font-size:16px;" onclick="closeModal('modal-edit-order')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-order-id">
+        <div class="form-group">
+          <label>SKU</label>
+          <input type="text" id="edit-order-sku" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Size</label>
+          <input type="text" id="edit-order-size" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" id="edit-order-qty" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Color</label>
+          <input type="text" id="edit-order-color" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Seller Account</label>
+          <input type="text" id="edit-order-seller" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="edit-order-status" class="form-control">
+            <option value="Valid">Valid</option>
+            <option value="Needs Review">Needs Review</option>
+            <option value="Duplicate">Duplicate</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-edit-order')">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmSaveOrderEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / Manage Product Category Modal -->
+  <div class="modal-overlay" id="modal-add-category">
+    <div class="modal-box" style="max-width: 460px;">
+      <div class="modal-header" style="background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="background:#e0f2fe; color:#0284c7; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px;">
+            <i class="fa-solid fa-tags"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">Add Product Category</h3>
+            <span style="font-size:12px; color:#64748b;">Create custom category for groups & bills</span>
+          </div>
+        </div>
+        <button style="border:none; background:none; cursor:pointer; font-size:20px; line-height:1; color:#94a3b8;" onclick="closeModal('modal-add-category')">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:16px;">
+        <input type="hidden" id="modal-category-group-id" value="">
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-size:12.5px; font-weight:600; color:#1e293b; display:block; margin-bottom:5px;">
+            Category Name <span style="color:#ef4444;">*</span>
+          </label>
+          <input type="text" id="modal-category-name" class="form-control" placeholder="e.g. Leggings, Kurti, Nightwear..." autofocus>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-size:12.5px; font-weight:600; color:#1e293b; display:block; margin-bottom:5px;">
+            Category Icon / Emoji
+          </label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="modal-category-icon-select" class="form-control" style="width:115px; font-size:14px;" onchange="onCategoryIconSelectChange(this.value)">
+              <option value="🏷️">🏷️ Tag</option>
+              <option value="👖">👖 Pants</option>
+              <option value="👕">👕 T-Shirt</option>
+              <option value="👗">👗 Dress</option>
+              <option value="👚">👚 Top</option>
+              <option value="🥻">🥻 Saree</option>
+              <option value="🩳">🩳 Shorts</option>
+              <option value="🥼">🥼 Coat</option>
+              <option value="🧣">🧣 Scarf</option>
+              <option value="👟">👟 Shoes</option>
+              <option value="📦">📦 Box</option>
+              <option value="✨">✨ Special</option>
+            </select>
+            <input type="text" id="modal-category-icon" class="form-control" value="🏷️" style="width:65px; text-align:center; font-size:16px;" maxlength="4" placeholder="🏷️">
+            <span style="font-size:12px; color:#64748b;">(or type emoji)</span>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label style="font-size:12.5px; font-weight:600; color:#1e293b; display:block; margin-bottom:5px;">
+            Display Placement Priority
+          </label>
+          <select id="modal-category-placement" class="form-control">
+            <option value="after_plazo">Directly After Plazo (Top Priority)</option>
+            <option value="after_womentee">After Women T-Shirts</option>
+            <option value="after_mentee">After Men T-Shirts</option>
+            <option value="default" selected>Normal Category (Before General)</option>
+            <option value="bottom">Bottom (With Other)</option>
+          </select>
+        </div>
+
+        <div id="modal-category-target-group-notice" style="display:none; padding:8px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; font-size:12px; color:#1e40af;">
+          <i class="fa-solid fa-circle-info"></i> This new category will be automatically applied to the selected product group upon creation.
+        </div>
+      </div>
+      <div class="modal-footer" style="background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn btn-secondary" onclick="closeModal('modal-add-category')">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmAddCategory()"><i class="fa-solid fa-check"></i> Save Category</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- A4 Order Picking & Packing Checklist Modal -->
+  <div class="modal-overlay" id="modal-picking-checklist">
+    <div class="modal-box modal-box-lg" style="max-width: 1040px; width: 96%; max-height: 94vh; display: flex; flex-direction: column;">
+      <!-- Modal Header (hidden on print) -->
+      <div class="modal-header no-print" style="background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="background:#e0f2fe; color:#0284c7; width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px;">
+            <i class="fa-solid fa-clipboard-check"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">A4 Order Picking & Packing Checklist</h3>
+            <span style="font-size:12px; color:#64748b;">Print on A4 paper or download PDF with checkboxes to tick off pieces one-by-one while picking stock</span>
+          </div>
+        </div>
+        <button style="border:none; background:none; cursor:pointer; font-size:22px; line-height:1; color:#94a3b8;" onclick="closeModal('modal-picking-checklist')" title="Close">&times;</button>
+      </div>
+
+      <!-- Toolbar / Filters Bar (hidden on print) -->
+      <div class="no-print" style="padding:10px 16px; background:#f1f5f9; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; flex-shrink:0;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <label style="font-size:12px; font-weight:600; color:#334155;">Category:</label>
+          <select id="checklist-category-select" class="form-control form-control-sm" style="width:170px; font-weight:600;" onchange="onChecklistFilterChange()">
+            <option value="">All Categories</option>
+          </select>
+
+          <label style="font-size:12px; font-weight:600; color:#334155; margin-left:6px;">Product Group:</label>
+          <select id="checklist-group-select" class="form-control form-control-sm" style="width:180px;" onchange="onChecklistFilterChange()">
+            <option value="">All Groups</option>
+          </select>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-secondary btn-sm" onclick="downloadChecklistPdf()" title="Download generated A4 PDF file directly">
+            <i class="fa-solid fa-file-pdf" style="color:#ef4444;"></i> Download A4 PDF
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="printChecklistSheet()" style="background:#0284c7; border-color:#0284c7; font-weight:600;">
+            <i class="fa-solid fa-print"></i> 🖨️ Print A4 Sheet
+          </button>
+        </div>
+      </div>
+
+      <!-- Printable Preview Area -->
+      <div class="modal-body" style="padding:16px; overflow-y:auto; background:#f8fafc; flex:1;">
+        <div id="checklist-print-container" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.04); max-width:920px; margin:0 auto;">
+          <!-- Dynamically generated preview checklist -->
+          <div id="checklist-content-area">
+            <div style="text-align:center; padding:40px; color:#94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Preparing Checklist...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer (hidden on print) -->
+      <div class="modal-footer no-print" style="background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <span style="font-size:12px; color:#64748b;">
+          <i class="fa-solid fa-lightbulb" style="color:#f59e0b;"></i> Tip: Click or tap checkboxes to mark items picked digitally, or print on A4 paper for pen-and-paper ticking.
+        </span>
+        <button class="btn btn-secondary" onclick="closeModal('modal-picking-checklist')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Live & QR Code Modal -->
+  <div class="modal-overlay" id="modal-mobile-live">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="background:var(--primary-light); color:var(--primary); width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px;">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+          </div>
+          <div>
+            <h3>Mobile Phone Live Access</h3>
+            <span style="font-size:12px; color:var(--text-muted);">Use on your mobile phone anywhere</span>
+          </div>
+        </div>
+        <button style="border:none; background:none; cursor:pointer; font-size:18px; color:var(--text-muted);" onclick="closeModal('modal-mobile-live')">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <div style="background:#ffffff; padding:12px; border-radius:12px; display:inline-block; border:1px solid var(--border-color); box-shadow:var(--shadow-sm); margin-bottom:14px;">
+          <img id="mobile-qr-image" src="" alt="Mobile QR Code" style="width:180px; height:180px; display:block; margin:0 auto; border-radius:6px; object-fit:contain;" />
+          <span id="mobile-qr-hint" style="font-size:11.5px; color:var(--text-muted); margin-top:8px; display:block; font-weight:500;">
+            <i class="fa-solid fa-camera"></i> Scan with Phone Camera to Open
+          </span>
+        </div>
+
+        <div style="text-align:left; display:flex; flex-direction:column; gap:12px;">
+          <!-- Public Cloudflare Live URL -->
+          <div style="background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:8px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:12px; font-weight:700; color:var(--success); display:flex; align-items:center; gap:6px;">
+                <span id="modal-cf-badge-dot" style="width:8px; height:8px; border-radius:50%; background:var(--success); display:inline-block;"></span>
+                <span id="modal-cf-badge-text">Online Live Link (Any Mobile / 4G / 5G)</span>
+              </span>
+              <div style="display:flex; gap:6px;">
+                <button class="btn btn-sm btn-secondary" onclick="restartTunnel()" title="Refresh / reconnect tunnel link" style="padding:4px 8px; font-size:11px;">
+                  <i class="fa-solid fa-arrows-rotate" id="restart-tunnel-icon"></i>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="copyLiveUrl('cloudflare')" style="padding:4px 10px; font-size:11px;">
+                  <i class="fa-regular fa-copy"></i> Copy Link
+                </button>
+              </div>
+            </div>
+            <div id="modal-cloudflare-url" style="font-family:monospace; font-size:12px; word-break:break-all; color:var(--primary); font-weight:600; padding:4px 0;">
+              Connecting live tunnel...
+            </div>
+            <span style="font-size:11px; color:var(--text-muted); display:block; margin-top:4px;">
+              <i class="fa-solid fa-circle-info"></i> Cloudflare tunnels refresh each launch. Always open or scan the current link above.
+            </span>
+          </div>
+
+          <!-- Same Wi-Fi Local URL -->
+          <div style="background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:8px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:12px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-wifi text-secondary"></i> Same Wi-Fi Local Link
+              </span>
+              <button class="btn btn-sm btn-secondary" onclick="copyLiveUrl('local')" style="padding:4px 10px; font-size:11px;">
+                <i class="fa-regular fa-copy"></i> Copy Link
+              </button>
+            </div>
+            <div id="modal-local-wifi-url" style="font-family:monospace; font-size:12px; word-break:break-all; color:var(--text-muted); font-weight:600; padding:4px 0;">
+              Detecting local IP...
+            </div>
+          </div>
+          <!-- PWA Mobile App Installation Card -->
+          <div style="background:linear-gradient(135deg, #eef2ff, #f0fdf4); border:1px solid #c7d2fe; border-radius:8px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:12.5px; font-weight:700; color:#4f46e5; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-mobile-screen"></i> Install App on Phone (PWA)
+              </span>
+              <button class="btn btn-sm btn-success" id="modal-install-pwa-btn" onclick="triggerPwaInstall()" style="padding:4px 10px; font-size:11.5px; font-weight:600;">
+                <i class="fa-solid fa-download"></i> Install App
+              </button>
+            </div>
+            <p style="font-size:11.5px; color:#334155; line-height:1.4; margin-bottom:6px;">
+              Get full-screen mobile app experience with an icon on your phone's home screen.
+            </p>
+            <div style="font-size:11px; color:#64748b; background:#ffffff; padding:6px 10px; border-radius:6px; border:1px dashed #cbd5e1;">
+              <strong>Android:</strong> Open live link in Chrome &rarr; Tap "Install app" or 3 dots.<br>
+              <strong>iPhone:</strong> Open in Safari &rarr; Tap Share [ <i class="fa-solid fa-arrow-up-from-bracket"></i> ] &rarr; "Add to Home Screen".
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <span id="modal-sync-status" style="font-size:11.5px; color:var(--text-muted);"><i class="fa-solid fa-circle-check text-success"></i> Real-time sync active</span>
+        <button class="btn btn-primary" onclick="closeModal('modal-mobile-live')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar (Sticky Thumb Navigation) -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+    <a class="bottom-nav-item active" data-tab="dashboard">
+      <i class="fa-solid fa-chart-pie"></i>
+      <span>Home</span>
+    </a>
+    <a class="bottom-nav-item" data-tab="upload">
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+      <span>Upload</span>
+    </a>
+    <a class="bottom-nav-item" data-tab="summary">
+      <i class="fa-solid fa-table-cells"></i>
+      <span>Summary</span>
+    </a>
+    <a class="bottom-nav-item" data-tab="generator">
+      <i class="fa-solid fa-file-pdf"></i>
+      <span>PDF Gen</span>
+    </a>
+    <a class="bottom-nav-item" id="bottom-nav-menu-btn">
+      <i class="fa-solid fa-bars"></i>
+      <span>Menu</span>
+    </a>
+  </nav>
+
+  <!-- Floating PWA Install Prompt Banner for Mobile -->
+  <div class="pwa-install-banner" id="pwa-install-banner" style="display:none;">
+    <div class="pwa-banner-content">
+      <img src="icons/icon-192.png" alt="App Icon" class="pwa-banner-icon" />
+      <div class="pwa-banner-text">
+        <strong>Meesho Label Hub</strong>
+        <span>Install App on phone for 1-tap fast packing!</span>
+      </div>
+    </div>
+    <div class="pwa-banner-actions">
+      <button class="btn btn-sm btn-primary" onclick="triggerPwaInstall()">
+        <i class="fa-solid fa-download"></i> Install
+      </button>
+      <button class="pwa-dismiss-btn" onclick="dismissPwaBanner()" aria-label="Close">&times;</button>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
