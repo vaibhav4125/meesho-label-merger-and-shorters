@@ -4,43 +4,71 @@ import glob
 import json
 from datetime import datetime
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from .database import (
-    init_db,
-    get_db,
-    save_sku_mappings_to_json,
-    restore_sku_mappings_from_json,
-    get_sku_mappings_status,
-    checkpoint_db,
-    DATA_DIR,
-    PERSISTENT_MAPPINGS_FILE
-)
-from .services import (
-    process_file_records,
-    get_dashboard_summary,
-    get_size_matrix,
-    export_summary_to_file,
-    get_sku_groups_info,
-    get_sku_clusters,
-    auto_group_all_clusters,
-    get_all_skus_color_breakdown,
-    export_color_breakdown_to_file,
-    get_all_product_categories,
-    add_product_category,
-    delete_product_category
-)
-from .pdf_generator import generate_sorted_pdf, batch_generate_sorted_pdfs, generate_all_merged_sorted_pdf
+try:
+    from .database import (
+        init_db,
+        get_db,
+        save_sku_mappings_to_json,
+        restore_sku_mappings_from_json,
+        get_sku_mappings_status,
+        checkpoint_db,
+        DATA_DIR,
+        PERSISTENT_MAPPINGS_FILE
+    )
+    from .services import (
+        process_file_records,
+        get_dashboard_summary,
+        get_size_matrix,
+        export_summary_to_file,
+        get_sku_groups_info,
+        get_sku_clusters,
+        auto_group_all_clusters,
+        get_all_skus_color_breakdown,
+        export_color_breakdown_to_file,
+        get_all_product_categories,
+        add_product_category,
+        delete_product_category
+    )
+    from .pdf_generator import generate_sorted_pdf, batch_generate_sorted_pdfs, generate_all_merged_sorted_pdf
+except (ImportError, ValueError):
+    from database import (
+        init_db,
+        get_db,
+        save_sku_mappings_to_json,
+        restore_sku_mappings_from_json,
+        get_sku_mappings_status,
+        checkpoint_db,
+        DATA_DIR,
+        PERSISTENT_MAPPINGS_FILE
+    )
+    from services import (
+        process_file_records,
+        get_dashboard_summary,
+        get_size_matrix,
+        export_summary_to_file,
+        get_sku_groups_info,
+        get_sku_clusters,
+        auto_group_all_clusters,
+        get_all_skus_color_breakdown,
+        export_color_breakdown_to_file,
+        get_all_product_categories,
+        add_product_category,
+        delete_product_category
+    )
+    from pdf_generator import generate_sorted_pdf, batch_generate_sorted_pdfs, generate_all_merged_sorted_pdf
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_cur_dir = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(_cur_dir) if os.path.basename(_cur_dir) == "backend" else _cur_dir
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 SAMPLE_DIR = os.path.join(BASE_DIR, "sample_pdfs")
-FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend") if os.path.exists(os.path.join(BASE_DIR, "frontend")) else BASE_DIR
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -130,11 +158,25 @@ class MergeAllRequest(BaseModel):
     sort_mode: Optional[str] = "color_first"
     output_filename: Optional[str] = None
 
+# --- Health & Keep-Alive Endpoints ---
+
+@app.get("/api/health")
+def health_check():
+    """Health check for keep-alive, wake-up detection, and cloud monitors."""
+    return {
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "app": "Meesho Multi-Account Label Sorting Hub"
+    }
+
 # --- Upload & File Endpoints ---
 
 @app.post("/api/upload")
-def upload_files(files: List[UploadFile] = File(...)):
-    """Upload one or multiple Meesho PDF files."""
+async def upload_files(
+    background_tasks: BackgroundTasks,
+    files: List[UploadFile] = File(...)
+):
+    """Upload one or multiple Meesho PDF files with immediate response & background processing."""
     saved_files = []
     errors = []
 
@@ -146,34 +188,35 @@ def upload_files(files: List[UploadFile] = File(...)):
         try:
             # Save uploaded file
             save_path = os.path.join(UPLOAD_DIR, file.filename)
-            # Handle potential duplicate filenames on upload
             counter = 1
             base_name, ext = os.path.splitext(file.filename)
             while os.path.exists(save_path):
                 save_path = os.path.join(UPLOAD_DIR, f"{base_name}_{counter}{ext}")
                 counter += 1
 
+            # Stream file to disk in 1MB chunks to prevent memory spikes
             with open(save_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+                while chunk := await file.read(1024 * 1024):
+                    buffer.write(chunk)
 
             file_size = os.path.getsize(save_path)
 
             with get_db() as conn:
                 cursor = conn.execute("""
                     INSERT INTO uploaded_files (filename, filepath, file_size, status)
-                    VALUES (?, ?, ?, 'pending')
+                    VALUES (?, ?, ?, 'processing')
                 """, (os.path.basename(save_path), save_path, file_size))
                 file_id = cursor.lastrowid
 
-            # Process the file immediately
-            page_count = process_file_records(file_id)
+            # Process in background task so HTTP response returns in < 1s (prevents Render 100s proxy timeout)
+            background_tasks.add_task(process_file_records, file_id)
 
             saved_files.append({
                 "file_id": file_id,
                 "filename": os.path.basename(save_path),
                 "file_size": file_size,
-                "page_count": page_count,
-                "status": "completed"
+                "page_count": 0,
+                "status": "processing"
             })
         except Exception as e:
             errors.append(f"Error processing {file.filename}: {str(e)}")
@@ -184,8 +227,21 @@ def upload_files(files: List[UploadFile] = File(...)):
         "errors": errors
     }
 
+@app.get("/api/files/{file_id}/status")
+def get_file_status(file_id: int):
+    """Get status of an uploaded PDF file being parsed in the background."""
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT id, filename, file_size, page_count, status, error_message, uploaded_at
+            FROM uploaded_files
+            WHERE id = ?
+        """, (file_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="File not found")
+        return dict(row)
+
 @app.post("/api/load-sample")
-def load_sample_files():
+def load_sample_files(background_tasks: BackgroundTasks):
     """Quick 1-click loading of the sample test PDFs."""
     sample_files = glob.glob(os.path.join(SAMPLE_DIR, "*.pdf"))
     if not sample_files:
@@ -194,7 +250,10 @@ def load_sample_files():
         sample_files = download_samples
 
     if not sample_files:
-        raise HTTPException(status_code=404, detail="No sample PDF files found in workspace or Downloads")
+        raise HTTPException(
+            status_code=404,
+            detail="No sample PDF files found on server. Please upload your own Meesho shipping label PDFs using the Upload button."
+        )
 
     loaded = []
     for sf in sample_files:
@@ -203,23 +262,23 @@ def load_sample_files():
         file_size = os.path.getsize(dest)
 
         with get_db() as conn:
-            # Check if already added
             existing = conn.execute("SELECT id FROM uploaded_files WHERE filepath = ?", (dest,)).fetchone()
             if existing:
                 file_id = existing["id"]
+                conn.execute("UPDATE uploaded_files SET status = 'processing' WHERE id = ?", (file_id,))
             else:
                 cursor = conn.execute("""
                     INSERT INTO uploaded_files (filename, filepath, file_size, status)
-                    VALUES (?, ?, ?, 'pending')
+                    VALUES (?, ?, ?, 'processing')
                 """, (os.path.basename(dest), dest, file_size))
                 file_id = cursor.lastrowid
 
-        page_count = process_file_records(file_id)
+        background_tasks.add_task(process_file_records, file_id)
         loaded.append({
             "file_id": file_id,
             "filename": os.path.basename(dest),
-            "page_count": page_count,
-            "status": "completed"
+            "page_count": 0,
+            "status": "processing"
         })
 
     return {"success": True, "loaded": loaded}
@@ -876,7 +935,10 @@ def clear_orders_only():
     """Daily reset: Clear uploaded PDF files and orders to start fresh. SKU mappings remain completely saved."""
     return reset_workspace(reset_mappings=False)
 
-from .tunnel import start_tunnel, stop_tunnel, get_tunnel_status
+try:
+    from .tunnel import start_tunnel, stop_tunnel, get_tunnel_status
+except (ImportError, ValueError):
+    from tunnel import start_tunnel, stop_tunnel, get_tunnel_status
 
 def is_cloud_env():
     return bool(os.environ.get("RENDER") or os.environ.get("RAILWAY_STATIC_URL") or os.environ.get("PORT"))
@@ -970,6 +1032,30 @@ def get_service_worker():
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
     raise HTTPException(status_code=404, detail="Service worker not found")
+
+@app.get("/css/style.css")
+@app.get("/style.css")
+def get_style_css():
+    for p in [
+        os.path.join(FRONTEND_DIR, "css", "style.css"),
+        os.path.join(FRONTEND_DIR, "style.css"),
+        os.path.join(BASE_DIR, "style.css")
+    ]:
+        if os.path.exists(p):
+            return FileResponse(p, media_type="text/css")
+    raise HTTPException(status_code=404, detail="style.css not found")
+
+@app.get("/js/app.js")
+@app.get("/app.js")
+def get_app_js():
+    for p in [
+        os.path.join(FRONTEND_DIR, "js", "app.js"),
+        os.path.join(FRONTEND_DIR, "app.js"),
+        os.path.join(BASE_DIR, "app.js")
+    ]:
+        if os.path.exists(p):
+            return FileResponse(p, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="app.js not found")
 
 # Mount Frontend static files
 if os.path.exists(FRONTEND_DIR):

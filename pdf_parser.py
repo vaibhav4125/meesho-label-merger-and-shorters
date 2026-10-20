@@ -242,8 +242,10 @@ def ocr_page(page, page_idx: int, filename: str) -> dict:
             "error_note": "OCR engine not available for scanned page"
         }
 
+    pix = None
+    img = None
     try:
-        pix = page.get_pixmap(dpi=200)
+        pix = page.get_pixmap(dpi=150)
         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         ocr_text = pytesseract.image_to_string(img)
         res = extract_from_text(ocr_text, page_idx, filename)
@@ -252,6 +254,12 @@ def ocr_page(page, page_idx: int, filename: str) -> dict:
             return res
     except Exception as e:
         pass
+    finally:
+        try:
+            del pix
+            del img
+        except Exception:
+            pass
 
     return {
         "seller": "Unknown",
@@ -270,14 +278,17 @@ def ocr_page(page, page_idx: int, filename: str) -> dict:
         "error_note": "OCR fallback failed to extract order"
     }
 
-def parse_pdf_file(filepath: str, filename: str = None) -> list:
-    """Parse all pages in a given PDF file."""
+def parse_pdf_file(filepath: str, filename: str = None, progress_callback = None) -> list:
+    """Parse all pages in a given PDF file with bounded memory usage."""
+    import gc
     if filename is None:
         filename = os.path.basename(filepath)
 
     doc = fitz.open(filepath)
+    total_pages = len(doc)
     results = []
-    for page_idx in range(len(doc)):
+
+    for page_idx in range(total_pages):
         page = doc[page_idx]
         text = page.get_text()
         if len(text.strip()) < 50:
@@ -310,6 +321,23 @@ def parse_pdf_file(filepath: str, filename: str = None) -> list:
                 "error_note": "Page extraction failed completely"
             }
         results.append(data)
+        del page
+
+        # Periodic garbage collection and progress notification
+        if (page_idx + 1) % 50 == 0:
+            gc.collect()
+            if progress_callback:
+                try:
+                    progress_callback(page_idx + 1, total_pages)
+                except Exception:
+                    pass
 
     doc.close()
+    gc.collect()
+    if progress_callback:
+        try:
+            progress_callback(total_pages, total_pages)
+        except Exception:
+            pass
+
     return results

@@ -103,6 +103,12 @@
         </div>
       </header>
 
+      <!-- Cloud Server Cold-Start / Wake-Up Banner (Render free tier) -->
+      <div id="cloud-wake-banner" style="display:none; margin:10px 16px 0 16px; padding:10px 16px; border-radius:8px; background:linear-gradient(90deg, #fef3c7, #fffbeb); border:1px solid #f59e0b; color:#92400e; font-size:13px; font-weight:500; align-items:center; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <i class="fa-solid fa-spinner fa-spin text-amber" style="font-size:16px;"></i>
+        <span id="cloud-wake-text">Cloud Server is waking up (Render free tier takes ~30s)... Please wait...</span>
+      </div>
+
       <div class="content-body">
         <!-- 1. DASHBOARD TAB (Compact At-a-Glance Executive View) -->
         <section id="tab-dashboard" class="tab-pane active">

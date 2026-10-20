@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meesho-hub-v1.0';
+const CACHE_NAME = 'meesho-hub-v1.1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -51,6 +51,16 @@ self.addEventListener('fetch', (event) => {
 
   // Non-GET requests (e.g. POST upload, POST generate) bypass cache directly
   if (req.method !== 'GET') {
+    return;
+  }
+
+  // File downloads & exports MUST bypass Service Worker completely for native browser download handling
+  if (
+    url.pathname.startsWith('/api/download/') ||
+    url.pathname.startsWith('/api/checklist/pdf') ||
+    url.pathname.includes('/export') ||
+    url.pathname.includes('/backup')
+  ) {
     return;
   }
 

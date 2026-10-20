@@ -4,11 +4,17 @@ import csv
 import io
 from collections import defaultdict
 import pandas as pd
-from .database import get_db
-from .pdf_parser import parse_pdf_file
-from .pdf_generator import ADULT_SIZE_ORDER, CHILDREN_SIZE_ORDER, get_size_sort_key
+try:
+    from .database import get_db
+    from .pdf_parser import parse_pdf_file
+    from .pdf_generator import ADULT_SIZE_ORDER, CHILDREN_SIZE_ORDER, get_size_sort_key
+except (ImportError, ValueError):
+    from database import get_db
+    from pdf_parser import parse_pdf_file
+    from pdf_generator import ADULT_SIZE_ORDER, CHILDREN_SIZE_ORDER, get_size_sort_key
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_cur_dir = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(_cur_dir) if os.path.basename(_cur_dir) == "backend" else _cur_dir
 OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 
 def process_file_records(file_id: int):
@@ -23,20 +29,24 @@ def process_file_records(file_id: int):
         conn.execute("UPDATE uploaded_files SET status = 'processing' WHERE id = ?", (file_id,))
 
     try:
-        results = parse_pdf_file(filepath, filename)
+        def update_progress(current_page, total_pages):
+            try:
+                with get_db() as conn:
+                    conn.execute(
+                        "UPDATE uploaded_files SET page_count = ? WHERE id = ?",
+                        (current_page, file_id)
+                    )
+            except Exception:
+                pass
+
+        results = parse_pdf_file(filepath, filename, progress_callback=update_progress)
 
         with get_db() as conn:
             # Delete existing parsed orders for this file if re-processing
             conn.execute("DELETE FROM orders WHERE file_id = ?", (file_id,))
 
-            for r in results:
-                conn.execute("""
-                    INSERT INTO orders (
-                        file_id, page_number, seller_account, order_no, awb,
-                        sku, product_name, size, qty, color, pickup_date,
-                        confidence, validation_status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
+            order_rows = [
+                (
                     file_id,
                     r["page_num"],
                     r["seller"],
@@ -50,7 +60,17 @@ def process_file_records(file_id: int):
                     r["pickup"],
                     r["confidence"],
                     r["validation_status"]
-                ))
+                )
+                for r in results
+            ]
+
+            conn.executemany("""
+                INSERT INTO orders (
+                    file_id, page_number, seller_account, order_no, awb,
+                    sku, product_name, size, qty, color, pickup_date,
+                    confidence, validation_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, order_rows)
 
             # Mark completed with page count
             conn.execute(

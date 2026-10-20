@@ -3,9 +3,13 @@ import re
 import zipfile
 from collections import defaultdict
 import fitz # PyMuPDF
-from .database import get_db
+try:
+    from .database import get_db
+except (ImportError, ValueError):
+    from database import get_db
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_cur_dir = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(_cur_dir) if os.path.basename(_cur_dir) == "backend" else _cur_dir
 OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -230,6 +234,8 @@ def generate_sorted_pdf(
             out_doc.close()
             for d in src_docs.values():
                 d.close()
+            import gc
+            gc.collect()
 
         # 7. Verification checks
         expected_page_count = len(sorted_orders)
