@@ -36,6 +36,7 @@ try:
         delete_product_category
     )
     from .pdf_generator import generate_sorted_pdf, batch_generate_sorted_pdfs, generate_all_merged_sorted_pdf
+    from .checklist_generator import generate_picking_checklist_pdf
 except (ImportError, ValueError):
     from database import (
         init_db,
@@ -62,6 +63,7 @@ except (ImportError, ValueError):
         delete_product_category
     )
     from pdf_generator import generate_sorted_pdf, batch_generate_sorted_pdfs, generate_all_merged_sorted_pdf
+    from checklist_generator import generate_picking_checklist_pdf
 
 _cur_dir = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(_cur_dir) if os.path.basename(_cur_dir) == "backend" else _cur_dir
@@ -397,7 +399,6 @@ def get_picking_checklist_pdf(
     sort_by: Optional[str] = "category"
 ):
     """Generate and download A4 printable Order Picking & Packing Checklist PDF."""
-    from .checklist_generator import generate_picking_checklist_pdf
     data = get_all_skus_color_breakdown(
         search=search,
         group_filter=group,

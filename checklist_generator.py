@@ -20,7 +20,8 @@ def generate_picking_checklist_pdf(
     Generate a clean, high-contrast, professional A4 printable picking & packing checklist PDF.
     Every size item has a tick-box [ ] so warehouse workers can tick off pieces while picking.
     """
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _cur = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.dirname(_cur) if os.path.basename(_cur) == "backend" else _cur
     output_dir = os.path.join(base_dir, "outputs")
     os.makedirs(output_dir, exist_ok=True)
 

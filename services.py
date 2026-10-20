@@ -5,11 +5,11 @@ import io
 from collections import defaultdict
 import pandas as pd
 try:
-    from .database import get_db
+    from .database import get_db, get_all_categories_db, add_category_db, delete_category_db
     from .pdf_parser import parse_pdf_file
     from .pdf_generator import ADULT_SIZE_ORDER, CHILDREN_SIZE_ORDER, get_size_sort_key
 except (ImportError, ValueError):
-    from database import get_db
+    from database import get_db, get_all_categories_db, add_category_db, delete_category_db
     from pdf_parser import parse_pdf_file
     from pdf_generator import ADULT_SIZE_ORDER, CHILDREN_SIZE_ORDER, get_size_sort_key
 
@@ -280,7 +280,6 @@ def get_all_category_meta():
     """Retrieve combined CATEGORY_META dynamically including all user-defined categories."""
     meta = dict(CATEGORY_META)
     try:
-        from .database import get_db
         with get_db() as conn:
             rows = conn.execute("SELECT name, label, icon, display_order FROM product_categories ORDER BY display_order ASC, id ASC").fetchall()
             for r in rows:
@@ -299,17 +298,14 @@ def get_all_category_meta():
 
 def get_all_product_categories():
     """Retrieve list of all categories from DB."""
-    from .database import get_all_categories_db
     return get_all_categories_db()
 
 def add_product_category(name: str, label: str = None, icon: str = "🏷️", display_order: float = None):
     """Add a new product category."""
-    from .database import add_category_db
     return add_category_db(name, label, icon, display_order)
 
 def delete_product_category(name: str):
     """Delete a custom product category."""
-    from .database import delete_category_db
     return delete_category_db(name)
 
 def detect_product_category(name: str, existing_cat: str = None) -> str:

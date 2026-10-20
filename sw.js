@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meesho-hub-v1.1';
+const CACHE_NAME = 'meesho-hub-v2.1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

@@ -99,7 +99,11 @@ def generate_sorted_pdf(
         else:
             raise ValueError("Either group_id or sku must be provided")
 
-        from .services import parse_sku_and_color, normalize_color_name, detect_product_category
+        try:
+            from .services import parse_sku_and_color, normalize_color_name, detect_product_category
+        except (ImportError, ValueError):
+            from services import parse_sku_and_color, normalize_color_name, detect_product_category
+
         cat = detect_product_category(group_name, grp_category)
         is_women_tshirt = (cat == "Women T-Shirt")
 
@@ -396,7 +400,11 @@ def generate_all_merged_sorted_pdf(
         total_eligible_orders = len(orders)
 
         # 1. Parse SKU base, normalized color, and assign display product group
-        from .services import parse_sku_and_color, normalize_color_name, detect_product_category, get_all_category_meta
+        try:
+            from .services import parse_sku_and_color, normalize_color_name, detect_product_category, get_all_category_meta
+        except (ImportError, ValueError):
+            from services import parse_sku_and_color, normalize_color_name, detect_product_category, get_all_category_meta
+
         cat_meta = get_all_category_meta()
         group_counts = defaultdict(int)
         group_color_counts = defaultdict(lambda: defaultdict(int))
